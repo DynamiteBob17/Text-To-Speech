@@ -138,7 +138,7 @@ public class TextToSpeech {
 				while (clip.getMicrosecondPosition() < clip.getMicrosecondLength()) {
 					// wait to finish
 				}
-			} catch (LineUnavailableException | IOException e) {
+			} catch (LineUnavailableException | IOException | IllegalArgumentException e) {
 				e.printStackTrace();
 			}
 			
