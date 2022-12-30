@@ -3,4 +3,7 @@ If you have [Java 17](https://www.oracle.com/java/technologies/javase/jdk17-arch
 - download the [.JAR file](https://github.com/PickleEaterJim33/Text-To-Speech/raw/main/target/Text-To-Speech.jar) located in the "target" directory and run it  
 **OR**
 - compile and run the repository as a Maven project with your method of choice.</br></br>
-`mvn clean compile exec:java` to run from a command.
+`mvn clean compile exec:java` to run from a command.  
+
+### How the speech is generated  
+- first the individual [ARPABET](https://en.wikipedia.org/wiki/ARPABET) phonemes needed were extracted manually using [Balabolka](https://balabolka.en.softonic.com/) and Audacity. Then using the [CMU ARPABET pronouncing dictionary](http://www.speech.cs.cmu.edu/cgi-bin/cmudict) the phonemes were combined into words.
