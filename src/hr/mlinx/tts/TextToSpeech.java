@@ -5,11 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.SequenceInputStream;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -18,18 +14,13 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JTextArea;
 
-import hr.mlinx.util.PhonemeFactory;
-
 public class TextToSpeech {
 	
 	private static final List<String> PUNCTUATION_MARKS = Arrays.asList("." , ",", "!", "?");
 	
-	private JTextArea ta;
-	private List<String> speech;
-	private Map<String, Map<String, String[]>> dictionary;
-	
-	private Map<String, AudioInputStream[]> vowels;
-	private Map<String, AudioInputStream[]> consonants;
+	private final JTextArea ta;
+	private final List<String> speech;
+	private final Map<String, Map<String, String[]>> dictionary;
 	
 	public TextToSpeech(JTextArea ta) {
 		super();
@@ -38,10 +29,6 @@ public class TextToSpeech {
 		speech = new LinkedList<>();
 		dictionary = new LinkedHashMap<>();
 		fillDictionary();
-		
-		vowels = new LinkedHashMap<>();
-		consonants = new LinkedHashMap<>();
-		PhonemeFactory.fillPhonemes(vowels, consonants);
 	}
 	
 	public void speak() {
@@ -54,45 +41,23 @@ public class TextToSpeech {
 			for (String s : speech) {
 				try {
 					if (s.contains("0") || s.contains("1") || s.contains("2")) {
-						if (as.isEmpty()) {
-							as.add(vowels.get(s)[0]);
-							vowels.get(s)[0] = AudioSystem.getAudioInputStream(TextToSpeech.class.getResource("/" + s + "_START.wav"));
-						} else {
-							as.add(vowels.get(s)[1]);
-							vowels.get(s)[1] = AudioSystem.getAudioInputStream(TextToSpeech.class.getResource("/" + s + "_MIDDLE.wav"));
-						}
-						
+						appendPhoneme(as, s);
 						lastPhoneme = s;
 					} else if (s.equals(" ")) {
 						speakWord(as, lastPhoneme);
 					} else if (PUNCTUATION_MARKS.contains(s)) {
 						speakWord(as, lastPhoneme);
-						
+
 						switch (s) {
-						case ".":
-							Thread.sleep(800);
-							break;
-						case ",":
-							Thread.sleep(400);
-							break;
-						case "!":
-							Thread.sleep(600);
-							break;
-						case "?":
-							Thread.sleep(1000);
-							break;
-						default:
-							break;
+							case "." -> Thread.sleep(800);
+							case "," -> Thread.sleep(400);
+							case "!" -> Thread.sleep(600);
+							case "?" -> Thread.sleep(1000);
+							default -> {
+							}
 						}
 					} else {
-						if (as.isEmpty()) {
-							as.add(consonants.get(s)[0]);
-							consonants.get(s)[0] = AudioSystem.getAudioInputStream(TextToSpeech.class.getResource("/" + s + "_START.wav"));
-						} else {
-							as.add(consonants.get(s)[1]);
-							consonants.get(s)[1] = AudioSystem.getAudioInputStream(TextToSpeech.class.getResource("/" + s + "_MIDDLE.wav"));
-						}
-						
+						appendPhoneme(as, s);
 						lastPhoneme = s;
 					}
 				} catch (InterruptedException | UnsupportedAudioFileException | IOException e) {
@@ -103,18 +68,13 @@ public class TextToSpeech {
 			speech.clear();
 		}
 	}
-	
+
 	private void speakWord(List<AudioInputStream> as, String lastPhoneme) {
 		if (!as.isEmpty()) {
 			try {
 				if (as.size() > 1) {
-					if (lastPhoneme.contains("0") || lastPhoneme.contains("1") || lastPhoneme.contains("2")) {
-						as.set(as.size() - 1, vowels.get(lastPhoneme)[2]);
-						vowels.get(lastPhoneme)[2] = AudioSystem.getAudioInputStream(TextToSpeech.class.getResource("/" + lastPhoneme + "_END.wav"));
-					} else {
-						as.set(as.size() - 1, consonants.get(lastPhoneme)[2]);
-						consonants.get(lastPhoneme)[2] = AudioSystem.getAudioInputStream(TextToSpeech.class.getResource("/" + lastPhoneme + "_END.wav"));
-					}
+					as.get(as.size() - 1).close();
+					as.set(as.size() - 1, getAudioStream(lastPhoneme, "END"));
 				}
 			} catch (UnsupportedAudioFileException | IOException e) {
 				e.printStackTrace();
@@ -126,7 +86,8 @@ public class TextToSpeech {
 				append = new AudioInputStream(
 						new SequenceInputStream(append, as.get(i)),
 						append.getFormat(),
-						append.getFrameLength() + as.get(i).getFrameLength());
+						append.getFrameLength() + as.get(i).getFrameLength()
+				);
 			}
 			
 			try {
@@ -193,9 +154,7 @@ public class TextToSpeech {
 				phonemes = dictionary.get(firstLetter.toUpperCase()).get(word.toUpperCase());
 				
 				if (phonemes != null) {
-					for (String p : phonemes) {
-						speech.add(p);
-					}
+					speech.addAll(Arrays.asList(phonemes));
 				}
 				
 			}
@@ -209,7 +168,7 @@ public class TextToSpeech {
 	
 	private void fillDictionary() {
 		try (InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("dictionary.txt");
-				BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+				BufferedReader br = new BufferedReader(new InputStreamReader(Objects.requireNonNull(is)))) {
 			String line;
 			String firstLetter;
 			String[] split;
@@ -233,6 +192,22 @@ public class TextToSpeech {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void appendPhoneme(List<AudioInputStream> as, String phoneme)
+			throws UnsupportedAudioFileException, IOException {
+		if (as.isEmpty()) {
+			as.add(getAudioStream(phoneme, "START"));
+		} else {
+			as.add(getAudioStream(phoneme, "MIDDLE"));
+		}
+	}
+
+	public static AudioInputStream getAudioStream(String phoneme, String position)
+			throws UnsupportedAudioFileException, IOException {
+		return AudioSystem.getAudioInputStream(Objects.requireNonNull(
+				TextToSpeech.class.getResource("/" + phoneme + "_" + position + ".wav")
+		));
 	}
 	
 }

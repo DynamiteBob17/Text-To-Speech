@@ -46,14 +46,12 @@ public class Main {
 		panel.setLayout(new BorderLayout());
 		panel.add(scroll, BorderLayout.CENTER);
 		panel.add(speakBtn, BorderLayout.SOUTH);
-		
-		speakBtn.addActionListener(l -> {
-			new Thread(() -> {
-				speakBtn.setEnabled(false);
-				tts.speak();
-				speakBtn.setEnabled(true);
-			}).start();
-		});
+
+		speakBtn.addActionListener(l -> new Thread(() -> {
+			speakBtn.setEnabled(false);
+			tts.speak();
+			speakBtn.setEnabled(true);
+		}).start());
 		
 		f.add(panel);
 		f.pack();
@@ -62,9 +60,7 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(() -> {
-			new Main();
-		});
+		SwingUtilities.invokeLater(Main::new);
 	}
 
 }
